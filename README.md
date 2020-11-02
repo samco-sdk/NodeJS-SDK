@@ -13,7 +13,7 @@ Please refer the below documentation for details on installation, set up and API
 This module is installed via npm:
 
 ```
-npm install stocknotejsbridge
+npm install stocknoteapijsbridge
 ```
 Once done, you can verify if package is appropriately installed using  below command.
 
