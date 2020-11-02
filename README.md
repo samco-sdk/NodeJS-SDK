@@ -13,7 +13,7 @@ Please refer the below documentation for details on installation, set up and API
 This module is installed via npm:
 
 ```
-npm install stocknoteapijsbridge
+npm install stocknotejsbridge
 ```
 Once done, you can verify if package is appropriately installed using  below command.
 
@@ -93,7 +93,7 @@ As a first step to access StockNote APIs, you need to import our SDK in your cli
 ### Import the NodeJS SDK and get a session token
 1. consume  StocknoteAPIJSBridge module
 ```
-var sn = require('stocknoteapijsbridge');
+var sn = require('stocknotejsbridge');
 ```
 2. Login to access Stocknote API by providing below parameters.
 
