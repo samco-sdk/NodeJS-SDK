@@ -128,7 +128,7 @@ var logindata = {
 </details>
  
  <details>
-  <summary>Login Response</summary>
+  <summary>Login Sample Response</summary>
   
   ```javascript
 	UserLogin:{
