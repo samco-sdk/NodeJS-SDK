@@ -2,7 +2,42 @@
 
    Official Node.js Bridge for accessing Stocknote API
    
-   This documentation covers details of the Node.js bridge / SDK provided by SAMCO, for accessing the <a href="https://docs-tradeapi.samco.in/#samco-api-documentation">SAMCO Trade API v3.1.0</a>
+   This documentation covers details of the Node.js bridge / SDK provided by SAMCO, for accessing the <a href="https://docs-tradeapi.samco.in/#samco-api-documentation">SAMCO Trade API v3.2.0</a>
+
+## What's new in v3.2
+
+The SDK now ships every endpoint added in [Trade API v3.2.0](https://docs-tradeapi.samco.in/release-notes/v3.2.0):
+
+- **`SessionTokenApi`** — direct authentication via `POST /session/token` (apiKey + apiSecret). Recommended over the legacy 4-step login.
+- **`OAuthApi`** — OAuth 2.1 Authorization-Code flow: `buildAuthorizeUrl()`, `waitForCallback()` (built-in localhost listener), `exchangeToken()`, `revoke()`.
+- **`WebSecretCodeApi`** — generate a one-time web login URL (`/webSecretCode`) and validate the returned OTP (`/webSecretCodeValidation`).
+- **`RegisterStaticIpApi`** — register Static IPs with `apiKey + apiSecret` (no password) via `/ip/registerStaticIp`.
+- **`WhoamiApi`** — `GET /ip/whoami` to confirm the egress IP your client is reaching the Trade API with.
+- **`ContractAnalyserApi`** — `POST /contractsAnalyser` for option-strategy P&L analysis.
+- **`BulkOrderApi`** — `POST /order/bulkOrder` to place multiple orders in one call.
+- **`BasketApi`** — full basket-order lifecycle (create / modify / delete / list, span calculator, execute, place-at-market, square-off, rearrange).
+- **`TradeviewApi`** — analytics summary, analytics details, gain-loss.
+
+The legacy `UserLoginApi`, `GenerateOtpApi`, `SecretKeyGenerateApi`, `AccessTokenApi`, `IpRegisterApi`, and `IpUpdateApi` classes continue to work but are marked `@deprecated`. New integrations should adopt `SessionTokenApi` (or `OAuthApi`) and `RegisterStaticIpApi`.
+
+### Quick start (v3.2)
+
+```ts
+import { SessionTokenApi, WhoamiApi, BasketApi } from "samco-bridge-node";
+
+const auth = new SessionTokenApi();
+const { sessionToken } = await auth.generate({
+  apiKey: process.env.SAMCO_API_KEY!,
+  apiSecret: process.env.SAMCO_API_SECRET!,
+});
+
+const whoami = await new WhoamiApi().whoami(sessionToken!);
+console.log("Egress IP:", whoami.srcIp);
+
+const basket = new BasketApi();
+const created = await basket.createBasket(sessionToken!, { basketName: "MyBasket" });
+```
+
 
 ## Overview
 

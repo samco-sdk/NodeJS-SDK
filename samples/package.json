@@ -1,0 +1,29 @@
+{
+  "name": "samco-bridge-node-samples",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Runnable samples for samco-bridge-node v3.2 (SAMCO Trade API).",
+  "scripts": {
+    "session-token": "ts-node sessionToken.ts",
+    "whoami": "ts-node whoami.ts",
+    "oauth-exchange": "ts-node oauthExchange.ts",
+    "get-quote": "ts-node getQuote.ts",
+    "place-order": "ts-node placeOrder.ts",
+    "stream-quote": "ts-node streamingQuote.ts",
+    "stream-market-data": "ts-node streamingMarketData.ts",
+    "sample-client": "ts-node sampleClient.ts"
+  },
+  "dependencies": {
+    "samco-bridge-node": "^3.2.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.12",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
