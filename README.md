@@ -12,7 +12,7 @@ The SDK now ships every endpoint added in [Trade API v3.2.0](https://docs-tradea
 - **`OAuthApi`** — OAuth 2.1 Authorization-Code flow: `buildAuthorizeUrl()`, `waitForCallback()` (built-in localhost listener), `exchangeToken()`, `revoke()`.
 - **`WebSecretCodeApi`** — generate a one-time web login URL (`/webSecretCode`) and validate the returned OTP (`/webSecretCodeValidation`).
 - **`RegisterStaticIpApi`** — register Static IPs with `apiKey + apiSecret` (no password) via `/ip/registerStaticIp`.
-- **`WhoamiApi`** — `GET /ip/whoami` to confirm the egress IP your client is reaching the Trade API with.
+- **`WhoamiApi`** — `GET /ip/whoami` to confirm the source IP your client is reaching the Trade API with.
 - **`ContractAnalyserApi`** — `POST /contractsAnalyser` for option-strategy P&L analysis.
 - **`BulkOrderApi`** — `POST /order/bulkOrder` to place multiple orders in one call.
 - **`BasketApi`** — full basket-order lifecycle (create / modify / delete / list, span calculator, execute, place-at-market, square-off, rearrange).
@@ -32,7 +32,7 @@ const { sessionToken } = await auth.generate({
 });
 
 const whoami = await new WhoamiApi().whoami(sessionToken!);
-console.log("Egress IP:", whoami.srcIp);
+console.log("Source IP:", whoami.srcIp);
 
 const basket = new BasketApi();
 const created = await basket.createBasket(sessionToken!, { basketName: "MyBasket" });

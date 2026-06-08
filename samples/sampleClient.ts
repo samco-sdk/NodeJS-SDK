@@ -75,7 +75,7 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Confirm the egress IP the API sees (useful for static-IP whitelisting).
+  // 2. Confirm the source IP the API sees (useful for static-IP whitelisting).
   await step("WhoamiApi.whoami", () => new WhoamiApi().whoami(sessionToken));
 
   // 3. Funds & margin.
