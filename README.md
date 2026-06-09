@@ -2,7 +2,36 @@
 
    Official Node.js Bridge for accessing Stocknote API
    
-   This documentation covers details of the Node.js bridge / SDK provided by SAMCO, for accessing the <a href="https://docs-tradeapi.samco.in/#samco-api-documentation">SAMCO Trade API v3.1.0</a>
+   This documentation covers details of the Node.js bridge / SDK provided by SAMCO, for accessing the <a href="https://docs-tradeapi.samco.in/#samco-api-documentation">SAMCO Trade API v3.2.0</a>
+
+## What's new in v3.2
+
+The SDK now ships every endpoint added in [Trade API v3.2.0](https://docs-tradeapi.samco.in/release-notes/v3.2.0):
+
+- **`SessionTokenApi`** — direct authentication via `POST /session/token` (apiKey + apiSecret). Recommended over the legacy 4-step login.
+- **`OAuthApi`** — OAuth 2.1 Authorization-Code flow: `buildAuthorizeUrl()`, `waitForCallback()` (built-in localhost listener), `exchangeToken()`, `revoke()`.
+- **`WhoamiApi`** — `GET /ip/whoami` to confirm the source IP your client is reaching the Trade API with.
+
+The legacy `UserLoginApi`, `GenerateOtpApi`, `SecretKeyGenerateApi`, `AccessTokenApi`, `IpRegisterApi`, and `IpUpdateApi` classes continue to work but are marked `@deprecated`. New integrations should adopt `SessionTokenApi` (or `OAuthApi`) and `RegisterStaticIpApi`.
+
+### Quick start (v3.2)
+
+```ts
+import { SessionTokenApi, WhoamiApi, BasketApi } from "samco-bridge-node";
+
+const auth = new SessionTokenApi();
+const { sessionToken } = await auth.generate({
+  apiKey: process.env.SAMCO_API_KEY!,
+  apiSecret: process.env.SAMCO_API_SECRET!,
+});
+
+const whoami = await new WhoamiApi().whoami(sessionToken!);
+console.log("Source IP:", whoami.srcIp);
+
+const basket = new BasketApi();
+const created = await basket.createBasket(sessionToken!, { basketName: "MyBasket" });
+```
+
 
 ## Overview
 
@@ -32,37 +61,34 @@
 
 ### Prerequisites (One-Time Setup)
 
-The following steps must be completed before using the APIs:
+Starting with **v3.2.0**, the recommended way to authenticate is the **Session Token (Direct)** flow using an OAuth app's `apiKey` and `apiSecret`. The older OTP + Secret-Key + Access-Token + Password-Login flow is still supported (see <a href="#login">Login</a>), but new integrations should prefer the steps below.
 
-1. **Register Static IP**  
-   Register your static IP using the  
-   <a href="#ipregistration">IP Registration</a> or  
-   <a href="#ipupdate">IP Update</a> API.
+1. **Create an OAuth app**  
+   Log in to the [Web Dashboard](https://docs-tradeapi.samco.in/dashboard/user-manual) and create an app. The dashboard returns an `apiKey` and `apiSecret` pair (you can have up to 5 active pairs per account).
 
-2. **Generate OTP**  
-   Generate a One-Time Password (OTP) using the  
-   <a href="#generateotp">Generate OTP</a> API.
+2. **Register a Static IP**  
+   Register a primary (and optional secondary) static IP for the app via the Dashboard. Order-related APIs reject traffic from non-whitelisted IPs. You can also use the legacy <a href="#ipregistration">IpRegister</a> / <a href="#ipupdate">IpUpdate</a> APIs.
 
-3. **Generate Secret API Key**  
-   Use the OTP from the previous step to generate your Secret API Key using the  
-   <a href="#generatesecretapikey">Generate Secret API Key</a> API.
-   
-   
-### Authentication (Required for Login)
+3. **(Optional) Confirm your source IP**  
+   Call the new <a href="#whoami">WhoAmI</a> API to confirm the IP our servers see you from — useful for debugging `403 — The IP is not the registered static IP` errors. This endpoint does **not** consume your SEBI weekly IP-update slot.
 
-4. **Generate Access Token**  
-   Call the [Generate Access Token](#generateaccesstoken) API using:
 
-   - `uid`
-   - `secretApiKey` (from [Generate Secret API Key](#generatesecretapikey))
+### Authentication
 
-   Notes:
+4. **Generate Session Token (recommended, v3.2.0+)**  
+   Call the [Generate Session Token](#sessiontoken) API using:
+
+   - `apiKey`    — API key from the Dashboard
+   - `apiSecret` — API secret from the Dashboard
+
+   The response carries a `sessionToken` which is sent as the `x-session-token` header on every subsequent Trade API call. This single call replaces the legacy 4-step OTP/Secret-Key/Access-Token/Login flow.
+
+   For browser-based, end-user delegated sign-in instead of a backend integration, use the [OAuth 2.1 Authorization-Code Flow](https://docs-tradeapi.samco.in/oauth/authorize-flow) (documented in the Trade API docs; not wrapped as a separate SDK section).
+
+5. **Legacy: Generate Access Token + Login**  
+   If you are still on password-based auth, call the [Generate Access Token](#generateaccesstoken) API with `uid` + `secretApiKey`, then call <a href="#login">UserLogin</a> with `userId`, `password`, `yob`, and `accessToken`. Notes on the access token:
    - The **Secret API Key does not expire** and can be reused.
-   - You can generate multiple access tokens using the same Secret API Key.
-   - This token is valid for one day.
-   - It expires before **8:00 AM** the next day.
-   - A new access token must be generated after expiry.
-   - This access token is required for the **Login API**.
+   - The access token is valid for one day and expires before **8:00 AM** the next day.
    
    
 ### Steps
@@ -95,10 +121,12 @@ setBaseUrl("https://tradeapi.samco.in");
 			   
 ###  List of supported API
 
- *  <a href="#login">Login</a>
- *  <a href="#generateotp">GenerateOtp</a>
- *  <a href="#generatesecretapikey">GenerateSecretAPIKey</a>
- *  <a href="#generateaccesstoken">GenerateAccessToken</a>
+ *  <a href="#sessiontoken">GenerateSessionToken</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#whoami">WhoAmI</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#login">Login</a> *(legacy)*
+ *  <a href="#generateotp">GenerateOtp</a> *(legacy)*
+ *  <a href="#generatesecretapikey">GenerateSecretAPIKey</a> *(legacy)*
+ *  <a href="#generateaccesstoken">GenerateAccessToken</a> *(legacy)*
  *  <a href="#ipregistration">IpRegistration</a>
  *  <a href="#ipupdate">IPUpdate</a>
  *  <a href="#personalindex">PersonalIndex</a>
@@ -113,6 +141,7 @@ setBaseUrl("https://tradeapi.samco.in");
  *  <a href="#placeorder">PlaceOrder</a>
  *  <a href="#placeorderBO">PlaceOrderBO</a>
  *  <a href="#placeorderCO">PlaceOrderCO</a>
+ *  <a href="#bulkorder">BulkOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
  *  <a href="#modify_order">ModifyOrder</a>
  *  <a href="#orderbook">OrderBook</a>
  *  <a href="#triggerorder">TriggerOrders</a>
@@ -136,12 +165,107 @@ setBaseUrl("https://tradeapi.samco.in");
  *  <a href="#indexIntraDayCandleData">IndexIntraDayCandleData</a>
  *  <a href="#historicalCandleData">HistoricalCandleData</a>
  *  <a href="#indexHistoricalCandleData">IndexHistoricalCandleData</a>
+ *  <a href="#listBasket">ListBasket</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#createBasket">CreateBasket</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#modifyBasket">ModifyBasket</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#deleteBasket">DeleteBasket</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#listBasketOrder">ListBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#createBasketOrder">CreateBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#modifyBasketOrder">ModifyBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#deleteBasketOrder">DeleteBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#executeBasket">ExecuteBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#placeAtMarket">PlaceAtMarket</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#basketSquareOff">BasketSquareOff</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#rearrangeBasket">RearrangeBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#basketSpanCalculator">BasketSpanCalculator</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#analyticsSummary">AnalyticsSummary</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#analyticsDetails">AnalyticsDetails</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#gainLoss">GainLoss</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#contractAnalyser">ContractAnalyser</a> &nbsp;<sup>NEW in 3.2.0</sup>
+ *  <a href="#streaming">Streaming (WebSocket)</a> &nbsp;<sup>NEW in 3.2.0</sup>
  *  <a href="#logout">Logout</a>
+
+
+### <h3 id="sessiontoken">GenerateSessionToken (v3.2.0):</h3>
+
+The recommended way to obtain a session token from v3.2.0 onwards. Exchanges your OAuth app's `apiKey` + `apiSecret` (created in the [Web Dashboard](https://docs-tradeapi.samco.in/dashboard/user-manual)) for a `sessionToken`. The returned token is sent as the `x-session-token` header on every subsequent Trade API call.
+
+This single call replaces the legacy 4-step OTP → SecretKey → AccessToken → Login flow.
+
+#### Parameters:
+
+    apiKey, apiSecret
+
+#### Sample Generate Session Token Request:
+```typescript
+import { SessionTokenApi } from "samco-bridge-node";
+
+const sessionApi = new SessionTokenApi();
+const session = await sessionApi.generate({
+  apiKey: "<YOUR_API_KEY>",
+  apiSecret: "<YOUR_API_SECRET>",
+});
+const sessionToken = session.sessionToken;
+```
+
+#### Sample Generate Session Token Response:
+```json
+{
+    "serverTime": "29/01/26 10:46:06",
+    "msgId": "d5f083f3-1b04-4b97-9385-1e578fdfeb7a",
+    "status": "Success",
+    "statusMessage": "Session token generated successfully",
+    "sessionToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "tokenId": "550e8400-e29b-41d4-a716-446655440000",
+    "accountID": "DV99999",
+    "accountName": "JOHN DOE",
+    "exchangeList": ["NSE", "BSE", "NFO", "MCX"],
+    "orderTypeList": ["L", "MKT", "SL", "SL-M"],
+    "productList": ["MIS", "CNC", "NRML"],
+    "srcIp": "203.0.113.10",
+    "primaryIp": "203.0.113.10",
+    "secondaryIp": "203.0.113.11"
+}
+```
+
+
+### <h3 id="whoami">WhoAmI (v3.2.0):</h3>
+
+A read-only diagnostic that reports the **source IP our server sees you calling from**, plus your currently-registered `PRIMARY` / `SECONDARY` IPs, and whether the source IP matches one of them.
+
+Use it to debug `403 — The IP is not the registered static IP` errors — call it from the *same host* that was rejected to see the exact IP the server received. This endpoint does **not** consume the SEBI weekly IP-update slot.
+
+#### Parameters:
+
+    sessionToken
+
+#### Sample WhoAmI Request:
+```typescript
+import { WhoamiApi } from "samco-bridge-node";
+
+const whoamiApi = new WhoamiApi();
+const whoami = await whoamiApi.whoami(sessionToken);
+```
+
+#### Sample WhoAmI Response:
+```json
+{
+    "serverTime": "03/06/26 10:46:06",
+    "msgId": "d5f083f3-1b04-4b97-9385-1e578fdfeb7a",
+    "status": "Success",
+    "statusMessage": "Calling from registered PRIMARY IP (203.0.113.10).",
+    "srcIp": "203.0.113.10",
+    "primaryIp": "203.0.113.10",
+    "secondaryIp": "203.0.113.11",
+    "matches": true,
+    "matchedAs": "PRIMARY"
+}
+```
 
 
 ### <h3 id="login">Login Api:</h3>
 
-   Node.js Bridge allows user authentication using UserLoginApi. A valid SAMCO Trading Account and subscription to Trade API Services is a pre-requisite for successful authentication.
+   Node.js Bridge allows user authentication using UserLoginApi. A valid SAMCO Trading Account and subscription to Trade API Services is a pre-requisite for successful authentication. *(Legacy flow — new integrations should prefer <a href="#sessiontoken">GenerateSessionToken</a>.)*
 
 #### Parameters:
 
@@ -874,6 +998,56 @@ const placeOrderCO = await ordersApi.placeOrderCO(xSessionToken, {
     }
 }
 ```
+
+### <h3 id="bulkorder">BulkOrder (v3.2.0):</h3>
+
+Submit multiple regular orders in a single request. Each entry of `orders` is a standard order request (same shape used by <a href="#placeorder">PlaceOrder</a>).
+
+#### Parameters:
+
+    sessionToken, BulkOrderRequest { orders: OrderRequest[] }
+
+#### Sample BulkOrder Request:
+```typescript
+import {
+  BulkOrderApi,
+  EXCHANGE_NSE,
+  ORDER_TYPE_LIMIT,
+  PRODUCT_MIS,
+  TRANSACTION_TYPE_BUY,
+  VALIDITY_DAY,
+} from "samco-bridge-node";
+
+const ordersApi = new BulkOrderApi();
+
+const o1 = {
+  symbolName: "SBIN",
+  exchange: EXCHANGE_NSE,
+  transactionType: TRANSACTION_TYPE_BUY,
+  orderType: ORDER_TYPE_LIMIT,
+  quantity: "1",
+  price: "520.50",
+  orderValidity: VALIDITY_DAY,
+  productType: PRODUCT_MIS,
+};
+
+// const o2 = { ... configure second order ... };
+
+const response = await ordersApi.bulkOrder(sessionToken, {
+  orders: [o1 /*, o2 */],
+});
+```
+
+#### Sample BulkOrder Response:
+```json
+{
+    "serverTime": "29/01/26 10:46:06",
+    "msgId": "d5f083f3-1b04-4b97-9385-1e578fdfeb7a",
+    "status": "Success",
+    "statusMessage": "Bulk order processed"
+}
+```
+
 
 ###  <h3 id="modify_order">Modify Order:</h3>
 
@@ -1813,6 +1987,276 @@ const indexHistoricalResponse = await historicalCandleDataApi.getIndexCandleData
     ]
 }
 ```
+
+### <h3 id="listBasket">ListBasket (v3.2.0):</h3>
+
+Returns the list of saved baskets for the logged-in user.
+
+#### Parameters:
+
+    sessionToken, listType
+
+#### Sample ListBasket Request:
+```typescript
+import { BasketApi } from "samco-bridge-node";
+
+const basketApi = new BasketApi();
+const resp = await basketApi.listBasket(sessionToken, "ALL");
+```
+
+
+### <h3 id="createBasket">CreateBasket (v3.2.0):</h3>
+
+Creates a new basket with a set of order entries that can later be executed atomically.
+
+#### Parameters:
+
+    sessionToken, CreateBasketRequest { basketName, description, orders, newPosition }
+
+#### Sample CreateBasket Request:
+```typescript
+const resp = await new BasketApi().createBasket(sessionToken, {
+  basketName: "MyAlphaBasket",
+  description: "Pair-trade leg 1",
+  orders: [orderRequest1, orderRequest2],
+});
+const basketId = resp.basketId;
+```
+
+
+### <h3 id="modifyBasket">ModifyBasket (v3.2.0):</h3>
+
+Updates basket metadata or its constituent orders.
+
+#### Sample ModifyBasket Request:
+```typescript
+const resp = await new BasketApi().modifyBasket(sessionToken, {
+  basketId,
+  basketName: "MyAlphaBasket-v2",
+  orders: updatedOrderList,
+});
+```
+
+
+### <h3 id="deleteBasket">DeleteBasket (v3.2.0):</h3>
+
+Deletes a previously-created basket by id.
+
+#### Sample DeleteBasket Request:
+```typescript
+const resp = await new BasketApi().deleteBasket(sessionToken, { basketId });
+```
+
+
+### <h3 id="listBasketOrder">ListBasketOrder (v3.2.0):</h3>
+
+Lists the orders inside a basket.
+
+#### Sample ListBasketOrder Request:
+```typescript
+const resp = await new BasketApi().listBasketOrder(sessionToken, basketId);
+```
+
+
+### <h3 id="createBasketOrder">CreateBasketOrder (v3.2.0):</h3>
+
+Appends a new order to an existing basket.
+
+#### Sample CreateBasketOrder Request:
+```typescript
+const resp = await new BasketApi().createOrder(sessionToken, {
+  basketId,
+  orders: [orderRequest],
+});
+```
+
+
+### <h3 id="modifyBasketOrder">ModifyBasketOrder (v3.2.0):</h3>
+
+Modifies a single order inside an existing basket.
+
+#### Sample ModifyBasketOrder Request:
+```typescript
+const resp = await new BasketApi().modifyBasketOrder(sessionToken, {
+  basketId,
+  orderId,
+  orders: [updatedOrderRequest],
+});
+```
+
+
+### <h3 id="deleteBasketOrder">DeleteBasketOrder (v3.2.0):</h3>
+
+Removes a specific order from a basket.
+
+#### Sample DeleteBasketOrder Request:
+```typescript
+const resp = await new BasketApi().deleteBasketOrder(sessionToken, {
+  basketId,
+  orderId,
+});
+```
+
+
+### <h3 id="executeBasket">ExecuteBasketOrder (v3.2.0):</h3>
+
+Executes every order in the basket using its configured `orderType` / `price` / etc.
+
+#### Sample ExecuteBasket Request:
+```typescript
+const resp = await new BasketApi().executeBasketOrder(sessionToken, {
+  basketId,
+});
+```
+
+
+### <h3 id="placeAtMarket">PlaceAtMarket (v3.2.0):</h3>
+
+Executes every order in the basket at market price (overriding individual order types).
+
+#### Sample PlaceAtMarket Request:
+```typescript
+const resp = await new BasketApi().placeAtMarket(sessionToken, { basketId });
+```
+
+
+### <h3 id="basketSquareOff">BasketSquareOff (v3.2.0):</h3>
+
+Squares off all open positions originating from a basket.
+
+#### Sample BasketSquareOff Request:
+```typescript
+const resp = await new BasketApi().squareOff(sessionToken, { basketId });
+```
+
+
+### <h3 id="rearrangeBasket">RearrangeBasketOrder (v3.2.0):</h3>
+
+Rearranges (formerly "Modify & Retry") failed/rejected orders within a basket and re-attempts execution.
+
+#### Sample RearrangeBasketOrder Request:
+```typescript
+const resp = await new BasketApi().rearrangeBasketOrder(sessionToken, {
+  basketId,
+  orders: retryOrderList,
+});
+```
+
+
+### <h3 id="basketSpanCalculator">BasketSpanCalculator (v3.2.0):</h3>
+
+Returns the total SPAN + exposure margin required to execute the basket.
+
+#### Sample BasketSpanCalculator Request:
+```typescript
+const resp = await new BasketApi().spanCalculator(sessionToken, { basketId });
+const { spanMargin, totalMargin } = resp;
+```
+
+
+### <h3 id="analyticsSummary">AnalyticsSummary (v3.2.0):</h3>
+
+High-level analytics summary for the user's portfolio over a duration or explicit date range.
+
+#### Parameters:
+
+    sessionToken, AnalyticsSummaryRequest { duration | fromDate + toDate }
+
+#### Sample AnalyticsSummary Request:
+```typescript
+import { TradeviewApi } from "samco-bridge-node";
+
+const resp = await new TradeviewApi().analyticsSummary(sessionToken, {
+  duration: "1D",   // or set fromDate / toDate
+});
+```
+
+
+### <h3 id="analyticsDetails">AnalyticsDetails (v3.2.0):</h3>
+
+Detailed analytics breakdown for the same time window.
+
+#### Sample AnalyticsDetails Request:
+```typescript
+const resp = await new TradeviewApi().analyticsDetails(sessionToken, {
+  fromDate: "2026-01-01",
+  toDate: "2026-01-31",
+});
+```
+
+
+### <h3 id="gainLoss">GainLoss (v3.2.0):</h3>
+
+Realised / unrealised gain-loss summary for the requested window.
+
+#### Sample GainLoss Request:
+```typescript
+const resp = await new TradeviewApi().gainLoss(sessionToken, {
+  duration: "1M",
+});
+```
+
+
+### <h3 id="contractAnalyser">ContractAnalyser (v3.2.0):</h3>
+
+Analyses derivative contracts on a given exchange/expiry date.
+
+#### Parameters:
+
+    sessionToken, ContractAnalyserRequest { exchange, targetDate }
+
+#### Sample ContractAnalyser Request:
+```typescript
+import { ContractAnalyserApi, EXCHANGE_NFO } from "samco-bridge-node";
+
+const resp = await new ContractAnalyserApi().analyse(sessionToken, {
+  exchange: EXCHANGE_NFO,
+  targetDate: "2026-02-27",
+});
+```
+
+
+### <h3 id="streaming">Streaming (WebSocket — v3.2.0):</h3>
+
+Real-time **quote** and **market-depth** streams are exposed over a WebSocket at `wss://stream.samco.in`. The connection authenticates via the `x-session-token` header (the JWT returned by <a href="#sessiontoken">GenerateSessionToken</a>).
+
+A symbol is encoded as `"<listingId>_<exchange>"` (for example `"3045_NSE"`), taken from `ScripMaster.csv`.
+
+The Node samples in [`samples/streamingQuote.ts`](./samples/streamingQuote.ts) and [`samples/streamingMarketData.ts`](./samples/streamingMarketData.ts) use the `ws` package directly.
+
+#### Sample Streaming Usage:
+```typescript
+import WebSocket from "ws";
+
+const STREAM_URL = "wss://stream.samco.in";
+
+const ws = new WebSocket(STREAM_URL, {
+  headers: { "x-session-token": sessionToken },
+});
+
+const subscribe = {
+  request: {
+    streaming_type: "quote", // or "quote2" for 5-level market depth
+    data: { symbols: [{ symbol: "3045_NSE" }] },
+    request_type: "subscribe",
+    response_format: "json",
+  },
+};
+
+ws.on("open", () => ws.send(JSON.stringify(subscribe)));
+ws.on("message", (msg) => console.log("Tick ::", msg.toString()));
+ws.on("error", (err) => console.error("WS error:", err));
+ws.on("close", (code) => console.log("Connection closed:", code));
+
+// Graceful shutdown — always unsubscribe before closing in production code.
+const unsubscribe = {
+  ...subscribe,
+  request: { ...subscribe.request, request_type: "unsubscribe" },
+};
+ws.send(JSON.stringify(unsubscribe));
+ws.close(1000, "client shutdown");
+```
+
 
 ### <h3 id="logout">Logout:</h3>
 
