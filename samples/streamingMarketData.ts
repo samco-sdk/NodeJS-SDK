@@ -49,7 +49,10 @@ function buildFrame(
   };
 }
 
-function streamMarketData(sessionToken: string, symbols: string[]) {
+export function streamMarketData(
+  sessionToken: string,
+  symbols: string[]
+): WebSocket {
   const ws = new WebSocket(STREAM_URL, {
     headers: { "x-session-token": sessionToken },
   });
@@ -66,28 +69,33 @@ function streamMarketData(sessionToken: string, symbols: string[]) {
 
   ws.on("error", (err: Error) => console.error("WS error:", err));
   ws.on("close", (code: number) => console.log("Connection closed:", code));
+  return ws;
+}
 
-  const shutdown = () => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(buildFrame(symbols, "unsubscribe")));
-      ws.close(1000, "client shutdown");
-    }
-    setTimeout(() => process.exit(0), 500);
-  };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+export function closeMarketDataStream(ws: WebSocket, symbols: string[]): void {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(buildFrame(symbols, "unsubscribe")));
+    ws.close(1000, "client shutdown");
+  }
 }
 
 function main() {
   const sessionToken = process.env.SAMCO_SESSION_TOKEN;
   if (!sessionToken) {
-    console.error("Set SAMCO_SESSION_TOKEN.");
+    console.error("Set SAMCO_SESSION_TOKEN in samples/.env.");
     process.exit(1);
   }
 
   // `<listingId>_<exchange>` from ScripMaster.csv (per the doc's sample).
-  const symbols = ["3880_NSE", "30125_NSE"];
-  streamMarketData(sessionToken, symbols);
+  const symbols = ["1594_NSE"];
+  const ws = streamMarketData(sessionToken, symbols);
+
+  const shutdown = () => {
+    closeMarketDataStream(ws, symbols);
+    setTimeout(() => process.exit(0), 500);
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 if (require.main === module) {

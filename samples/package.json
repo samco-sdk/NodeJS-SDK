@@ -4,14 +4,18 @@
   "private": true,
   "description": "Runnable samples for samco-bridge-node v3.2 (SAMCO Trade API).",
   "scripts": {
-    "session-token": "ts-node sessionToken.ts",
-    "whoami": "ts-node whoami.ts",
-    "oauth-exchange": "ts-node oauthExchange.ts",
-    "get-quote": "ts-node getQuote.ts",
-    "place-order": "ts-node placeOrder.ts",
-    "stream-quote": "ts-node streamingQuote.ts",
-    "stream-market-data": "ts-node streamingMarketData.ts",
-    "sample-client": "ts-node sampleClient.ts"
+    "session-token": "ts-node -r dotenv/config sessionToken.ts",
+    "whoami": "ts-node -r dotenv/config whoami.ts",
+    "get-quote": "ts-node -r dotenv/config getQuote.ts",
+    "place-order": "ts-node -r dotenv/config placeOrder.ts",
+    "get-positions": "ts-node -r dotenv/config getPositions.ts",
+    "get-holdings": "ts-node -r dotenv/config getHoldings.ts",
+    "order-book": "ts-node -r dotenv/config orderBook.ts",
+    "order-status": "ts-node -r dotenv/config getOrderStatus.ts",
+    "stream-quote": "ts-node -r dotenv/config streamingQuote.ts",
+    "stream-market-data": "ts-node -r dotenv/config streamingMarketData.ts",
+    "sample-client": "ts-node -r dotenv/config sampleClient.ts",
+    "quick-start": "ts-node -r dotenv/config quickStart.ts"
   },
   "dependencies": {
     "samco-bridge-node": "^3.2.0",
@@ -20,6 +24,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.12",
+    "dotenv": "^16.4.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
   },

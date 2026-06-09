@@ -49,45 +49,59 @@ function buildFrame(
   };
 }
 
-function streamQuotes(sessionToken: string, symbols: string[]) {
+export function streamQuotes(sessionToken: string, symbols: string[]): WebSocket {
   const ws = new WebSocket(STREAM_URL, {
     headers: { "x-session-token": sessionToken },
   });
 
   ws.on("open", () => {
     console.log("Connected to", STREAM_URL);
-    ws.send(JSON.stringify(buildFrame(symbols, "subscribe")));
+    const frame = JSON.stringify(buildFrame(symbols, "subscribe"));
+    console.log("Subscribe ->", frame);
+    ws.send(frame);
   });
 
   ws.on("message", (msg: WebSocket.RawData) => {
     console.log("Quote ::", msg.toString());
   });
 
+  ws.on("unexpected-response", (_req, res) =>
+    console.error("WS unexpected-response:", res.statusCode, res.statusMessage)
+  );
+  ws.on("ping", () => console.log("WS ping <-"));
+  ws.on("pong", () => console.log("WS pong <-"));
   ws.on("error", (err: Error) => console.error("WS error:", err));
-  ws.on("close", (code: number) => console.log("Connection closed:", code));
+  ws.on("close", (code: number, reason: Buffer) =>
+    console.log("Connection closed:", code, reason.toString())
+  );
+  return ws;
+}
 
-  // Graceful shutdown: unsubscribe before closing.
-  const shutdown = () => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(buildFrame(symbols, "unsubscribe")));
-      ws.close(1000, "client shutdown");
-    }
-    setTimeout(() => process.exit(0), 500);
-  };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+// Graceful unsubscribe-then-close helper. Safe to call multiple times.
+export function closeQuoteStream(ws: WebSocket, symbols: string[]): void {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(buildFrame(symbols, "unsubscribe")));
+    ws.close(1000, "client shutdown");
+  }
 }
 
 function main() {
   const sessionToken = process.env.SAMCO_SESSION_TOKEN;
   if (!sessionToken) {
-    console.error("Set SAMCO_SESSION_TOKEN.");
+    console.error("Set SAMCO_SESSION_TOKEN in samples/.env.");
     process.exit(1);
   }
 
   // Symbols use the `<listingId>_<exchange>` form from ScripMaster.csv.
-  const symbols = ["532826_BSE"];
-  streamQuotes(sessionToken, symbols);
+  const symbols = ["11536_NSE"];
+  const ws = streamQuotes(sessionToken, symbols);
+
+  const shutdown = () => {
+    closeQuoteStream(ws, symbols);
+    setTimeout(() => process.exit(0), 500);
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 if (require.main === module) {

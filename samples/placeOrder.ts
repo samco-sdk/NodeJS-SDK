@@ -10,8 +10,8 @@
  * !!! places a real order against the authenticated trading account.
  *
  * Run:
- *   export SAMCO_SESSION_TOKEN=<JWT>
- *   npx ts-node samples/placeOrder.ts
+ *   1. Set SAMCO_SESSION_TOKEN in samples/.env.
+ *   2. npm run place-order
  */
 
 const BASE_URL = "https://tradeapi.samco.in";
@@ -56,7 +56,7 @@ export async function placeOrder(
 async function main() {
   const sessionToken = process.env.SAMCO_SESSION_TOKEN;
   if (!sessionToken) {
-    console.error("Set SAMCO_SESSION_TOKEN.");
+    console.error("Set SAMCO_SESSION_TOKEN in samples/.env.");
     process.exit(1);
   }
 

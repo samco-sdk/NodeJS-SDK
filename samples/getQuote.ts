@@ -8,8 +8,8 @@
  * (samples/sessionToken.ts) sent as `x-session-token`.
  *
  * Run:
- *   export SAMCO_SESSION_TOKEN=<JWT>
- *   npx ts-node samples/getQuote.ts SBIN NSE
+ *   1. Set SAMCO_SESSION_TOKEN in samples/.env.
+ *   2. npm run get-quote -- SBIN NSE
  */
 
 const BASE_URL = "https://tradeapi.samco.in";
@@ -43,7 +43,7 @@ export async function getQuote(
 async function main() {
   const sessionToken = process.env.SAMCO_SESSION_TOKEN;
   if (!sessionToken) {
-    console.error("Set SAMCO_SESSION_TOKEN.");
+    console.error("Set SAMCO_SESSION_TOKEN in samples/.env.");
     process.exit(1);
   }
 

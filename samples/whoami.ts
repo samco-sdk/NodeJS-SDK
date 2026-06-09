@@ -9,8 +9,8 @@
  * consume the SEBI weekly IP-update slot.
  *
  * Run:
- *   export SAMCO_SESSION_TOKEN=<JWT from POST /session/token>
- *   npx ts-node samples/whoami.ts
+ *   1. Set SAMCO_SESSION_TOKEN in samples/.env.
+ *   2. npm run whoami
  */
 
 const BASE_URL = "https://tradeapi.samco.in";
@@ -44,7 +44,7 @@ export async function whoami(sessionToken: string): Promise<WhoamiResponse> {
 async function main() {
   const sessionToken = process.env.SAMCO_SESSION_TOKEN;
   if (!sessionToken) {
-    console.error("Set SAMCO_SESSION_TOKEN.");
+    console.error("Set SAMCO_SESSION_TOKEN in samples/.env.");
     process.exit(1);
   }
 

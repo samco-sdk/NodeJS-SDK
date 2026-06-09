@@ -8,9 +8,8 @@
  * reused as the `x-session-token` header on every subsequent Trade API call.
  *
  * Run:
- *   export SAMCO_API_KEY=<AES_ENCRYPTED_API_KEY>
- *   export SAMCO_API_SECRET=<AES_ENCRYPTED_API_SECRET>
- *   npx ts-node samples/sessionToken.ts
+ *   1. Edit samples/.env with SAMCO_API_KEY / SAMCO_API_SECRET.
+ *   2. npm run session-token
  */
 
 const BASE_URL = "https://tradeapi.samco.in";
@@ -66,12 +65,15 @@ async function main() {
   const apiKey = process.env.SAMCO_API_KEY;
   const apiSecret = process.env.SAMCO_API_SECRET;
   if (!apiKey || !apiSecret) {
-    console.error("Set SAMCO_API_KEY and SAMCO_API_SECRET (AES-encrypted).");
+    console.error("Set SAMCO_API_KEY and SAMCO_API_SECRET in samples/.env.");
     process.exit(1);
   }
 
   const sessionToken = await generateSessionToken(apiKey, apiSecret);
   console.log("JWT acquired (first 24 chars):", sessionToken.slice(0, 24) + "…");
+  console.log(
+    "Paste this JWT into SAMCO_SESSION_TOKEN in samples/.env to reuse it."
+  );
 
   // Reuse the JWT for any v3.2 endpoint.
   const limits = await callWithSession(sessionToken, "/limit/getLimits");
