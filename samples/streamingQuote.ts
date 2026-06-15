@@ -56,7 +56,7 @@ export function streamQuotes(sessionToken: string, symbols: string[]): WebSocket
 
   ws.on("open", () => {
     console.log("Connected to", STREAM_URL);
-    const frame = JSON.stringify(buildFrame(symbols, "subscribe"));
+    const frame = JSON.stringify(buildFrame(symbols, "subscribe")) + "\n";
     console.log("Subscribe ->", frame);
     ws.send(frame);
   });
@@ -80,7 +80,7 @@ export function streamQuotes(sessionToken: string, symbols: string[]): WebSocket
 // Graceful unsubscribe-then-close helper. Safe to call multiple times.
 export function closeQuoteStream(ws: WebSocket, symbols: string[]): void {
   if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(buildFrame(symbols, "unsubscribe")));
+    ws.send(JSON.stringify(buildFrame(symbols, "unsubscribe")) + "\n");
     ws.close(1000, "client shutdown");
   }
 }

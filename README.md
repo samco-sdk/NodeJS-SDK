@@ -2232,7 +2232,7 @@ const subscribe = {
   },
 };
 
-ws.on("open", () => ws.send(JSON.stringify(subscribe)));
+ws.on("open", () => ws.send(JSON.stringify(subscribe) + "\n"));
 ws.on("message", (msg) => console.log("Tick ::", msg.toString()));
 ws.on("error", (err) => console.error("WS error:", err));
 ws.on("close", (code) => console.log("Connection closed:", code));
@@ -2242,7 +2242,7 @@ const unsubscribe = {
   ...subscribe,
   request: { ...subscribe.request, request_type: "unsubscribe" },
 };
-ws.send(JSON.stringify(unsubscribe));
+ws.send(JSON.stringify(unsubscribe) + "\n");
 ws.close(1000, "client shutdown");
 ```
 
