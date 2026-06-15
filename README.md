@@ -2205,46 +2205,58 @@ const resp = await new ContractAnalyserApi().analyse(sessionToken, {
 ```
 
 
-### <h3 id="streaming">Streaming (WebSocket — v3.2.0):</h3>
+### <h3 id="streaming">Streaming (WebSocket — v3.2.0, SDK in v3.2.2):</h3>
 
 Real-time **quote** and **market-depth** streams are exposed over a WebSocket at `wss://stream.samco.in`. The connection authenticates via the `x-session-token` header (the JWT returned by <a href="#sessiontoken">GenerateSessionToken</a>).
 
 A symbol is encoded as `"<listingId>_<exchange>"` (for example `"3045_NSE"`), taken from `ScripMaster.csv`.
 
-The Node samples in [`samples/streamingQuote.ts`](./samples/streamingQuote.ts) and [`samples/streamingMarketData.ts`](./samples/streamingMarketData.ts) use the `ws` package directly.
+Starting in **v3.2.2** the SDK ships a typed `StreamingClient` (built on `ws`) that handles the subscribe / unsubscribe envelope, header-based auth, and dispatch to typed listener callbacks. The Node samples in [`samples/streamingQuote.ts`](./samples/streamingQuote.ts) and [`samples/streamingMarketData.ts`](./samples/streamingMarketData.ts) demonstrate both stream types.
 
-#### Sample Streaming Usage:
+#### Public API:
+
 ```typescript
-import WebSocket from "ws";
+import {
+  StreamingClient,
+  StreamingListener,
+  QuoteTick,
+  DepthTick,
+  symbolRef,
+} from "samco-bridge-node";
 
-const STREAM_URL = "wss://stream.samco.in";
-
-const ws = new WebSocket(STREAM_URL, {
-  headers: { "x-session-token": sessionToken },
-});
-
-const subscribe = {
-  request: {
-    streaming_type: "quote", // or "quote2" for 5-level market depth
-    data: { symbols: [{ symbol: "3045_NSE" }] },
-    request_type: "subscribe",
-    response_format: "json",
-  },
+// All callbacks are optional — override only the ones you care about.
+const listener: StreamingListener = {
+  onOpen: () => console.log("open"),
+  onQuote: (tick: QuoteTick) => console.log("ltp", tick.symbol, tick.lastTradedPrice),
+  onDepth: (tick: DepthTick) => console.log("depth", tick.symbol, tick.bid, tick.ask),
+  onMessage: (text) => console.log("raw", text), // frames that don't match a known shape
+  onError: (err) => console.error(err),
+  onClosed: (code, reason) => console.log("closed", code, reason),
 };
 
-ws.on("open", () => ws.send(JSON.stringify(subscribe) + "\n"));
-ws.on("message", (msg) => console.log("Tick ::", msg.toString()));
-ws.on("error", (err) => console.error("WS error:", err));
-ws.on("close", (code) => console.log("Connection closed:", code));
+const client = new StreamingClient(listener);
+await client.connect(sessionToken);                      // wss://stream.samco.in by default
 
-// Graceful shutdown — always unsubscribe before closing in production code.
-const unsubscribe = {
-  ...subscribe,
-  request: { ...subscribe.request, request_type: "unsubscribe" },
-};
-ws.send(JSON.stringify(unsubscribe) + "\n");
-ws.close(1000, "client shutdown");
+client.subscribeQuote([symbolRef("3045_NSE")]);          // streaming_type=quote
+client.subscribeMarketDepth([symbolRef("532826_BSE")]);  // streaming_type=quote2 (5-level depth)
+
+// Always unsubscribe before closing in production code.
+client.unsubscribeQuote([symbolRef("3045_NSE")]);
+client.close();
 ```
+
+#### Constructor options:
+
+```typescript
+new StreamingClient(listener);                          // default 10s connect timeout
+new StreamingClient(listener, { handshakeTimeout: 5000 });  // any ws.ClientOptions
+```
+
+`StreamingClient.connect(sessionToken, url?)` returns a `Promise<void>` that resolves once the WebSocket handshake completes; the second argument lets you point at a non-default endpoint (e.g. for testing). To override the default streaming URL globally, call `setStreamingUrl("wss://...")` from `samco-bridge-node` before constructing the client.
+
+#### Tick payload:
+
+`QuoteTick` exposes the well-known fields (`symbol`, `exchange`, `lastTradedPrice`, `openPrice`, `highPrice`, `lowPrice`, `closePrice`, `volume`, `tickTime`) and a `raw: Record<string, unknown>` passthrough for any additional payload fields. `DepthTick` exposes `bid` / `ask` as 5-level arrays plus `raw`.
 
 
 ### <h3 id="logout">Logout:</h3>

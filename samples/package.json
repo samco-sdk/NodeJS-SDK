@@ -18,12 +18,10 @@
     "quick-start": "ts-node -r dotenv/config quickStart.ts"
   },
   "dependencies": {
-    "samco-bridge-node": "^3.2.1",
-    "ws": "^8.18.0"
+    "samco-bridge-node": "^3.2.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/ws": "^8.5.12",
     "dotenv": "^16.4.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"

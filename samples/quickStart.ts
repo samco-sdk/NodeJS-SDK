@@ -9,7 +9,7 @@
  *                                  (each runs ~60s then auto-shuts down).
  */
 
-import WebSocket from "ws";
+import { StreamingClient } from "samco-bridge-node";
 import { getHoldings } from "./getHoldings";
 import { getOrderStatus } from "./getOrderStatus";
 import { getPositions } from "./getPositions";
@@ -63,47 +63,28 @@ async function runStep(title: string, step: () => Promise<void>): Promise<void> 
 
 async function runStream(
   title: string,
-  open: () => WebSocket,
-  close: (ws: WebSocket) => void,
+  open: () => Promise<StreamingClient>,
+  close: (client: StreamingClient) => void,
   durationMs: number
 ): Promise<void> {
   section(title);
   console.log(`[${title}] streaming for ${durationMs / 1000}s …`);
-  await new Promise<void>((resolve) => {
-    let ws: WebSocket;
-    try {
-      ws = open();
-    } catch (err) {
-      const e = err as Error;
-      console.log(`[${title}] failed: ${e.name}: ${e.message}`);
-      resolve();
-      return;
-    }
-    let received = 0;
-    ws.on("message", () => {
-      received++;
-    });
 
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      console.log(
-        `[${title}] closed - ${received} message(s) received in ${durationMs / 1000}s.`
-      );
-      resolve();
-    };
-    const timer = setTimeout(() => {
-      console.log(
-        `[${title}] ${durationMs / 1000}s elapsed - unsubscribing and closing.`
-      );
-      close(ws);
-      setTimeout(finish, 1500); // safety net if server never echoes close
-    }, durationMs);
-    ws.on("close", finish);
-    ws.on("error", finish);
-  });
+  let client: StreamingClient | null = null;
+  try {
+    client = await open();
+  } catch (err) {
+    const e = err as Error;
+    console.log(`[${title}] failed to open: ${e.name}: ${e.message}`);
+    return;
+  }
+
+  await new Promise<void>((resolve) => setTimeout(resolve, durationMs));
+  console.log(
+    `[${title}] ${durationMs / 1000}s elapsed - unsubscribing and closing.`
+  );
+  close(client);
+  await new Promise<void>((resolve) => setTimeout(resolve, 500));
 }
 
 async function main(): Promise<void> {
