@@ -1,91 +1,68 @@
 /**
- * f. Streaming Quote Data — WebSocket
+ * f. Streaming Quote Data — WebSocket (via samco-bridge-node SDK)
  *
  * Source: ta-api-docs/streaming/streaming-quote-data.md
  *
  * Endpoint: wss://stream.samco.in
  * Auth    : `x-session-token` header (JWT from POST /session/token).
  *
- * Subscribe frame shape:
- *   { request: { streaming_type: "quote",
- *                data: { symbols: [{ symbol: "<listingId>_<exch>" }] },
- *                request_type: "subscribe",
- *                response_format: "json" } }
- *
- * The same frame with `request_type: "unsubscribe"` stops a stream — always
- * unsubscribe before closing in production code.
- *
- * Runtime: Node 22+ with the `ws` package — `npm i ws`.
+ * v3.2.2 of samco-bridge-node ships a typed `StreamingClient` that wraps the
+ * subscribe / unsubscribe envelope and dispatches `quote` ticks to onQuote
+ * and `quote2` (depth) ticks to onDepth. Symbol format remains
+ * `"<listingId>_<exchange>"` (e.g. `"3045_NSE"`) from ScripMaster.csv.
  *
  * Run:
  *   export SAMCO_SESSION_TOKEN=<JWT>
  *   npx ts-node samples/streamingQuote.ts
  */
 
-import WebSocket from "ws";
+import {
+  StreamingClient,
+  StreamingListener,
+  QuoteTick,
+  symbolRef,
+} from "samco-bridge-node";
 
-const STREAM_URL = "wss://stream.samco.in";
+export async function streamQuotes(
+  sessionToken: string,
+  symbols: string[]
+): Promise<StreamingClient> {
+  const refs = symbols.map(symbolRef);
 
-interface SubscribeFrame {
-  request: {
-    streaming_type: "quote";
-    data: { symbols: { symbol: string }[] };
-    request_type: "subscribe" | "unsubscribe";
-    response_format: "json";
-  };
-}
-
-function buildFrame(
-  symbols: string[],
-  action: "subscribe" | "unsubscribe"
-): SubscribeFrame {
-  return {
-    request: {
-      streaming_type: "quote",
-      data: { symbols: symbols.map((s) => ({ symbol: s })) },
-      request_type: action,
-      response_format: "json",
+  const listener: StreamingListener = {
+    onOpen: () => {
+      console.log("Connected to streaming feed");
+      console.log("Subscribe ->", symbols.join(", "));
     },
+    onQuote: (tick: QuoteTick) => {
+      console.log("Quote ::", JSON.stringify(tick.raw ?? tick));
+    },
+    onMessage: (text) => console.log("Raw ::", text),
+    onError: (err) => console.error("WS error:", err),
+    onClosed: (code, reason) =>
+      console.log("Connection closed:", code, reason),
   };
-}
 
-export function streamQuotes(sessionToken: string, symbols: string[]): WebSocket {
-  const ws = new WebSocket(STREAM_URL, {
-    headers: { "x-session-token": sessionToken },
-  });
-
-  ws.on("open", () => {
-    console.log("Connected to", STREAM_URL);
-    const frame = JSON.stringify(buildFrame(symbols, "subscribe")) + "\n";
-    console.log("Subscribe ->", frame);
-    ws.send(frame);
-  });
-
-  ws.on("message", (msg: WebSocket.RawData) => {
-    console.log("Quote ::", msg.toString());
-  });
-
-  ws.on("unexpected-response", (_req, res) =>
-    console.error("WS unexpected-response:", res.statusCode, res.statusMessage)
-  );
-  ws.on("ping", () => console.log("WS ping <-"));
-  ws.on("pong", () => console.log("WS pong <-"));
-  ws.on("error", (err: Error) => console.error("WS error:", err));
-  ws.on("close", (code: number, reason: Buffer) =>
-    console.log("Connection closed:", code, reason.toString())
-  );
-  return ws;
+  const client = new StreamingClient(listener);
+  await client.connect(sessionToken);
+  client.subscribeQuote(refs);
+  return client;
 }
 
 // Graceful unsubscribe-then-close helper. Safe to call multiple times.
-export function closeQuoteStream(ws: WebSocket, symbols: string[]): void {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(buildFrame(symbols, "unsubscribe")) + "\n");
-    ws.close(1000, "client shutdown");
+export function closeQuoteStream(
+  client: StreamingClient,
+  symbols: string[]
+): void {
+  try {
+    client.unsubscribeQuote(symbols.map(symbolRef));
+  } catch {
+    // already disconnected
   }
+  client.close();
 }
 
-function main() {
+async function main() {
   const sessionToken = process.env.SAMCO_SESSION_TOKEN;
   if (!sessionToken) {
     console.error("Set SAMCO_SESSION_TOKEN in samples/.env.");
@@ -94,10 +71,10 @@ function main() {
 
   // Symbols use the `<listingId>_<exchange>` form from ScripMaster.csv.
   const symbols = ["11536_NSE"];
-  const ws = streamQuotes(sessionToken, symbols);
+  const client = await streamQuotes(sessionToken, symbols);
 
   const shutdown = () => {
-    closeQuoteStream(ws, symbols);
+    closeQuoteStream(client, symbols);
     setTimeout(() => process.exit(0), 500);
   };
   process.on("SIGINT", shutdown);
@@ -105,5 +82,8 @@ function main() {
 }
 
 if (require.main === module) {
-  main();
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
 }

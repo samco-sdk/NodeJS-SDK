@@ -1,9 +1,10 @@
 # SAMCO Trade API v3.2 — Node.js samples
 
 Runnable TypeScript samples for the v3.2 endpoints documented in
-[`ta-api-docs`](https://docs-tradeapi.samco.in). Most samples are plain
-`fetch` / `ws` (no SDK dependency) so they read 1:1 against the docs;
-`sampleClient.ts` is the same flow expressed through `samco-bridge-node`.
+[`ta-api-docs`](https://docs-tradeapi.samco.in). REST samples are plain
+`fetch` (no SDK dependency) so they read 1:1 against the docs;
+streaming samples use the `StreamingClient` shipped in `samco-bridge-node`
+**v3.2.2+**. `sampleClient.ts` is the same flow expressed through the SDK.
 
 ## Install
 
