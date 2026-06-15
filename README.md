@@ -174,7 +174,6 @@ setBaseUrl("https://tradeapi.samco.in");
  *  <a href="#modifyBasketOrder">ModifyBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
  *  <a href="#deleteBasketOrder">DeleteBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
  *  <a href="#executeBasket">ExecuteBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
- *  <a href="#placeAtMarket">PlaceAtMarket</a> &nbsp;<sup>NEW in 3.2.0</sup>
  *  <a href="#basketSquareOff">BasketSquareOff</a> &nbsp;<sup>NEW in 3.2.0</sup>
  *  <a href="#rearrangeBasket">RearrangeBasketOrder</a> &nbsp;<sup>NEW in 3.2.0</sup>
  *  <a href="#basketSpanCalculator">BasketSpanCalculator</a> &nbsp;<sup>NEW in 3.2.0</sup>
@@ -1051,7 +1050,7 @@ const response = await ordersApi.bulkOrder(sessionToken, {
 
 ###  <h3 id="modify_order">Modify Order:</h3>
 
-   User would be able to modify some attributes of an order as long as it is with open/pending status in system. For modification order identifier is mandatory. With order identifier you need to send the optional parameter(s) which needs to be modified. In case the optional parameters aren't sent, the default will be considered from the original order. Modifiable attributes include quantity, Order Type (L,MKT, SL,SL-M). This API cannot be used for modifying attributes of an executed/rejected/cancelled order. Only the attribute that needs to be modified should be sent in the request alongwith the Order Identifier.
+   User would be able to modify some attributes of an order as long as it is with open/pending status in system. For modification order identifier is mandatory. With order identifier you need to send the optional parameter(s) which needs to be modified. In case the optional parameters aren't sent, the default will be considered from the original order. Modifiable attributes include quantity, Order Type (L, SL). This API cannot be used for modifying attributes of an executed/rejected/cancelled order. Only the attribute that needs to be modified should be sent in the request alongwith the Order Identifier.
 
 #### Parameters:
 
@@ -2107,16 +2106,6 @@ Executes every order in the basket using its configured `orderType` / `price` / 
 const resp = await new BasketApi().executeBasketOrder(sessionToken, {
   basketId,
 });
-```
-
-
-### <h3 id="placeAtMarket">PlaceAtMarket (v3.2.0):</h3>
-
-Executes every order in the basket at market price (overriding individual order types).
-
-#### Sample PlaceAtMarket Request:
-```typescript
-const resp = await new BasketApi().placeAtMarket(sessionToken, { basketId });
 ```
 
 
